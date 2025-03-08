@@ -6,5 +6,5 @@ streamlit-authenticator
 finnhub-python
 pandas
 scikit-learn
-numpy==1.21.0
-pmdarima==1.8.5
+numpy==1.22.0
+pmdarima==2.0.4
