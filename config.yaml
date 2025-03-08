@@ -1,0 +1,10 @@
+credentials:
+  usernames:
+    user1:
+      email: user1@example.com
+      name: User One
+      password: password123  # Use hashed passwords in production (see streamlit-authenticator docs)
+cookie:
+  expiry_days: 30
+  key: abcdef
+  name: financial_tool
