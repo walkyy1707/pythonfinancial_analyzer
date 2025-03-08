@@ -9,3 +9,4 @@ pmdarima==2.0.4
 pandas
 scikit-learn
 ta
+prophet
