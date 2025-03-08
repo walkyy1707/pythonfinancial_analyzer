@@ -1,0 +1,13 @@
+API Key: Replace "YOUR_FINNHUB_API_KEY" with your actual Finnhub API key.
+
+Authentication: Create a config.yaml file with user credentials (example provided below).
+
+Dependencies: Install required libraries with:
+
+pip install streamlit streamlit-authenticator finnhub-python ccxt pmdarima plotly pandas numpy sqlite3
+
+Run the App: Use streamlit run financial_analyzer.py to start the tool locally.
+
+Sample config.yaml
+Save this as config.yaml in the same directory as the script (update with secure credentials):
+
