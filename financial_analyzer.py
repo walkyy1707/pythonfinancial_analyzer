@@ -68,7 +68,7 @@ period = st.sidebar.selectbox("Time Period", ["1d", "5d", "1mo", "3mo", "6mo", "
 analyses = st.sidebar.multiselect("Select Analyses", ["Stats", "Moving Averages", "RSI", "MACD"])
 
 # Login
-name, authentication_status, username = authenticator.login("Login", "main")
+name, authentication_status, username = authenticator.login(name="Login", location="main")
 
 if authentication_status:
     st.write(f"Welcome, {name}!")
