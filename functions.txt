@@ -1,0 +1,12 @@
+Graphical Interface: Streamlit-based GUI.
+
+Real-Time Data: Latest price updates on demand.
+
+Portfolio Tracking: Multi-asset analysis with return and volatility.
+
+Price Predictions: Basic linear regression forecasts.
+
+Alerts: In-app notifications for indicator thresholds.
+
+Cloud Hosting: Accessible online via Streamlit Cloud.
+
