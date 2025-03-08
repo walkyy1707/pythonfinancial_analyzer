@@ -1,0 +1,25 @@
+How to Use the Tool
+Setup and Run:
+Save the code as financial_analyzer.py.
+
+Create the config.yaml file with your user credentials.
+
+Install dependencies and run the app with streamlit run financial_analyzer.py.
+
+Log In:
+Use the credentials from config.yaml to log in.
+
+Analyze Assets:
+Single Asset: Choose "Single Asset" in the sidebar, select "Stock" or "Crypto", enter a ticker (e.g., AAPL or BTC/USDT), pick a time period, and select analyses (e.g., Stats, Moving Averages).
+
+Portfolio: Choose "Portfolio," enter tickers with weights (e.g., AAPL:0.5,MSFT:0.5), and save/load them.
+
+Real-Time Prices:
+For single assets, live prices update automatically in the left column.
+
+Predictions:
+Check "Include Price Prediction" to see ARIMA-based forecasts on the chart.
+
+Export:
+Download your analysis as a CSV file using the export button.
+
