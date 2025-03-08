@@ -1,3 +1,5 @@
+numpy==1.22.0
+pmdarima==2.0.4
 streamlit
 yfinance
 ccxt
@@ -6,5 +8,3 @@ streamlit-authenticator
 finnhub-python
 pandas
 scikit-learn
-numpy==1.22.0
-pmdarima==2.0.4
