@@ -4,7 +4,7 @@ ccxt
 plotly
 streamlit-authenticator
 finnhub-python
-numpy==1.23.5
+numpy==1.24.4
 pmdarima==2.0.4
 pandas
 scikit-learn
