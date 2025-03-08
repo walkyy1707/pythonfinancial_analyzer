@@ -1,0 +1,31 @@
+Key Fixes and Improvements
+1. Authentication Fix
+Issue: Previous TypeError due to incorrect login() arguments.
+
+Fix: Updated authenticator.login() to use form_name and location keywords, ensuring compatibility with streamlit-authenticator.
+
+2. Secure Credential Management
+Improvement: Moved hardcoded credentials to a config.yaml file.
+
+Note: Ensure config.yaml is added to .gitignore to prevent exposure in version control.
+
+3. Real-Time Updates
+Issue: Infinite while True loops were incompatible with Streamlit’s single-threaded model.
+
+Fix: Replaced with a controlled, periodic update using st.empty() and a limited iteration loop for demonstration purposes.
+
+4. Multiple Data Sources
+Improvement: Added support for Finnhub (stocks) and CCXT (crypto) with a user-selectable dropdown, enhancing versatility.
+
+5. Enhanced Portfolio Management
+Improvement: Replaced text area input with a structured form for adding portfolio entries, stored in SQLite (scalable to PostgreSQL for larger datasets).
+
+6. Advanced Price Predictions
+Improvement: Added ARIMA and Prophet models, selectable via a dropdown, with customizable forecast periods.
+
+7. UI Enhancements
+Improvement: Moved settings and login to the sidebar for a cleaner layout, added tooltips (via descriptive labels), and used columns for real-time and historical data display.
+
+8. Performance and Robustness
+Improvement: Added @st.cache_data for data fetching to improve performance, and included error handling to gracefully handle data retrieval failures.
+
