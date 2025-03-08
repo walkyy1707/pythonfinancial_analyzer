@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit_authenticator as stauth
+import yaml
 import finnhub
 import ccxt
 import pandas as pd
@@ -12,11 +13,16 @@ import threading
 import queue
 import time
 from datetime import datetime
+from ta.trend import SMAIndicator  # For additional indicators
+from prophet import Prophet  # Updated import for Prophet
 
-# --- Authentication Setup ---
-# Load credentials from config.yaml
+# --- Secure Credential Management ---
+# Load credentials from config.yaml (excluded from Git)
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
+
 authenticator = stauth.Authenticate(
-    credentials={'usernames': {'user1': {'email': 'user1@example.com', 'name': 'User One', 'password': 'password123'}}},
+    credentials=config['credentials'],
     cookie_name="financial_tool",
     key="abcdef",
     cookie_expiry_days=30
@@ -59,27 +65,39 @@ def crypto_websocket_thread(ticker):
 # --- Streamlit App ---
 st.title("Financial Data Analysis Tool")
 
-# Sidebar for Settings
-st.sidebar.title("Settings")
-analysis_type = st.sidebar.selectbox("Analysis Type", ["Single Asset", "Portfolio"])
-asset_type = st.sidebar.selectbox("Asset Type", ["Stock", "Crypto"]) if analysis_type == "Single Asset" else None
-ticker = st.sidebar.text_input("Ticker Symbol (e.g., AAPL or BTC/USDT)").upper() if analysis_type == "Single Asset" else None
-period = st.sidebar.selectbox("Time Period", ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"])
-analyses = st.sidebar.multiselect("Select Analyses", ["Stats", "Moving Averages", "RSI", "MACD"])
+# Sidebar for Settings and Login
+with st.sidebar:
+    st.title("Settings")
+    analysis_type = st.selectbox("Analysis Type", ["Single Asset", "Portfolio"])
+    if analysis_type == "Single Asset":
+        asset_type = st.selectbox("Asset Type", ["Stock", "Crypto"])
+        ticker = st.text_input("Ticker Symbol (e.g., AAPL or BTC/USDT)").upper()
+        data_source = st.selectbox("Select Data Source", ["Finnhub", "CCXT"])
+    period = st.selectbox("Time Period", ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"])
+    analyses = st.multiselect("Select Analyses", ["Stats", "Moving Averages", "RSI", "MACD"])
+    prediction_model = st.selectbox("Prediction Model", ["ARIMA", "Prophet"])
 
-# Login
-name, authentication_status, username = authenticator.login(name="Login", location="main")
+    # Login
+    authentication_status, username = authenticator.login(form_name='Login', location='sidebar')
 
+# Handle Authentication Status
 if authentication_status:
-    st.write(f"Welcome, {name}!")
+    user_name = config['credentials']['usernames'][username]['name']  # Fetch name from config
+    st.write(f"Welcome, {user_name}!")
 
-    # Portfolio Management
+    # Portfolio Management (Improved)
     if analysis_type == "Portfolio":
-        portfolio_input = st.text_area("Enter your portfolio (e.g., AAPL:0.5,MSFT:0.5)", "")
-        if st.button("Save Portfolio"):
-            c.execute("INSERT OR REPLACE INTO portfolios (username, portfolio) VALUES (?, ?)", (username, portfolio_input))
-            conn.commit()
-            st.success("Portfolio saved!")
+        st.subheader("Portfolio Management")
+        with st.form("portfolio_form"):
+            ticker = st.text_input("Ticker")
+            weight = st.number_input("Weight (%)", min_value=0.0, max_value=100.0)
+            submit = st.form_submit_button("Add to Portfolio")
+            if submit:
+                # Save to SQLite (scalable to PostgreSQL if needed)
+                c.execute("INSERT OR REPLACE INTO portfolios (username, portfolio) VALUES (?, ?)", 
+                          (username, f"{ticker}:{weight}"))
+                conn.commit()
+                st.success(f"Added {ticker} with weight {weight}%")
         
         # Load saved portfolio
         c.execute("SELECT portfolio FROM portfolios WHERE username = ?", (username,))
@@ -90,7 +108,7 @@ if authentication_status:
     # Main Content
     col1, col2 = st.columns(2)
     with col1:
-        # Real-Time Price Updates
+        # Real-Time Price Updates (Improved)
         if analysis_type == "Single Asset" and ticker:
             st.write("### Real-Time Price Updates")
             price_placeholder = st.empty()
@@ -98,25 +116,26 @@ if authentication_status:
                 threading.Thread(target=stock_websocket_thread, args=(ticker,), daemon=True).start()
             elif asset_type == "Crypto":
                 threading.Thread(target=crypto_websocket_thread, args=(ticker,), daemon=True).start()
-            while True:
+            for _ in range(100):  # Limited iterations for demo
                 try:
                     latest_price = price_queue.get_nowait()
                     price_placeholder.write(f"Latest Price: {latest_price}")
                 except queue.Empty:
-                    time.sleep(1)  # Wait briefly if no new data
+                    price_placeholder.write("Waiting for price update...")
+                time.sleep(1)
 
     with col2:
-        # Fetch Historical Data
+        # Fetch Historical Data (with Caching and Error Handling)
         @st.cache_data
-        def fetch_data(asset_type, ticker, period):
+        def fetch_data(asset_type, ticker, period, data_source):
             try:
-                if asset_type == "Stock":
+                if data_source == "Finnhub":
                     data = finnhub_client.stock_candles(ticker, 'D', int(time.time() - 86400 * 365), int(time.time()))
                     data = pd.DataFrame(data, columns=["c", "h", "l", "o", "t", "v"])
                     data.columns = ["close", "high", "low", "open", "timestamp", "volume"]
                     data["timestamp"] = pd.to_datetime(data["timestamp"], unit="s")
                     data.set_index("timestamp", inplace=True)
-                elif asset_type == "Crypto":
+                elif data_source == "CCXT":
                     ohlcv = crypto_exchange.fetch_ohlcv(ticker, timeframe="1d", limit=365)
                     data = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
                     data["timestamp"] = pd.to_datetime(data["timestamp"], unit="ms")
@@ -132,18 +151,21 @@ if authentication_status:
 
         if analysis_type == "Single Asset" and ticker:
             with st.spinner("Fetching data..."):
-                data = fetch_data(asset_type, ticker, period)
+                data = fetch_data(asset_type, ticker, period, data_source)
             
             if data is not None:
-                # Compute Analyses
+                # Compute Analyses (Improved with Customization)
                 if "Moving Averages" in analyses:
-                    data["short_ma"] = data["close"].rolling(window=20).mean()
-                    data["long_ma"] = data["close"].rolling(window=50).mean()
+                    short_window = st.slider("Short MA Window", min_value=5, max_value=50, value=20)
+                    long_window = st.slider("Long MA Window", min_value=20, max_value=100, value=50)
+                    data["short_ma"] = data["close"].rolling(window=short_window).mean()
+                    data["long_ma"] = data["close"].rolling(window=long_window).mean()
                 
                 if "RSI" in analyses:
+                    rsi_window = st.slider("RSI Window", min_value=5, max_value=30, value=14)
                     delta = data["close"].diff()
-                    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-                    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                    gain = (delta.where(delta > 0, 0)).rolling(window=rsi_window).mean()
+                    loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_window).mean()
                     rs = gain / loss
                     data["rsi"] = 100 - (100 / (1 + rs))
                 
@@ -167,11 +189,14 @@ if authentication_status:
                         st.write(f"{key}: {value:.2f}")
                 
                 # Plot Data
-                fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1, subplot_titles=(f"{ticker} Price", "Indicators"))
+                fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1, 
+                                    subplot_titles=(f"{ticker} Price", "Indicators"))
                 fig.add_trace(go.Scatter(x=data.index, y=data["close"], name="Close Price"), row=1, col=1)
                 if "Moving Averages" in analyses:
-                    fig.add_trace(go.Scatter(x=data.index, y=data["short_ma"], name="Short MA (20)"), row=1, col=1)
-                    fig.add_trace(go.Scatter(x=data.index, y=data["long_ma"], name="Long MA (50)"), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=data.index, y=data["short_ma"], name=f"Short MA ({short_window})"), 
+                                  row=1, col=1)
+                    fig.add_trace(go.Scatter(x=data.index, y=data["long_ma"], name=f"Long MA ({long_window})"), 
+                                  row=1, col=1)
                 if "RSI" in analyses:
                     fig.add_trace(go.Scatter(x=data.index, y=data["rsi"], name="RSI"), row=2, col=1)
                     fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
@@ -182,17 +207,31 @@ if authentication_status:
                 fig.update_layout(title=f"{ticker} Financial Analysis", height=800)
                 st.plotly_chart(fig)
                 
-                # Price Prediction with ARIMA
+                # Price Prediction (Improved with Model Selection)
                 if st.checkbox("Include Price Prediction"):
-                    model = pm.auto_arima(data["close"], seasonal=False, stepwise=True)
-                    forecast = model.predict(n_periods=5)
-                    future_dates = pd.date_range(start=data.index[-1], periods=6, freq="B")[1:]
-                    fig.add_trace(go.Scatter(x=future_dates, y=forecast, name="ARIMA Prediction", mode="lines", line=dict(dash="dash")), row=1, col=1)
+                    if prediction_model == "ARIMA":
+                        model = pm.auto_arima(data["close"], seasonal=False, stepwise=True)
+                        forecast = model.predict(n_periods=5)
+                        future_dates = pd.date_range(start=data.index[-1], periods=6, freq="B")[1:]
+                    elif prediction_model == "Prophet":
+                        df = data.reset_index().rename(columns={'timestamp': 'ds', 'close': 'y'})
+                        model = Prophet()
+                        model.fit(df)
+                        future = model.make_future_dataframe(periods=30)
+                        forecast = model.predict(future)
+                        forecast = forecast['yhat'][-30:]
+                        future_dates = pd.date_range(start=data.index[-1], periods=31, freq="B")[1:]
+                    fig.add_trace(go.Scatter(x=future_dates[:len(forecast)], y=forecast, 
+                                           name=f"{prediction_model} Prediction", mode="lines", 
+                                           line=dict(dash="dash")), row=1, col=1)
                     st.plotly_chart(fig)
                 
                 # Export Data
                 csv = data.to_csv(index=True)
-                st.download_button(label="Export Data as CSV", data=csv, file_name=f"{ticker}_analysis.csv", mime="text/csv")
+                st.download_button(label="Export Data as CSV", data=csv, file_name=f"{ticker}_analysis.csv", 
+                                  mime="text/csv")
 
-else:
-    st.warning("Please log in to access the tool.")
+elif authentication_status is False:
+    st.error("Username/password is incorrect")
+elif authentication_status is None:
+    st.warning("Please enter your username and password")
