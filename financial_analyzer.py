@@ -81,7 +81,7 @@ with st.sidebar:
     analyses = st.multiselect("Select Analyses", ["Stats", "Moving Averages", "RSI", "MACD"])
     prediction_model = st.selectbox("Prediction Model", ["ARIMA", "Prophet"])
 
-    # Login (Fixed)
+    # Login
     authentication_status, username = authenticator.login(location='main')
 
 # Handle Authentication Status
