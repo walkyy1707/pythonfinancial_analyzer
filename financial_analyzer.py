@@ -13,13 +13,17 @@ import threading
 import queue
 import time
 from datetime import datetime
-from ta.trend import SMAIndicator  # For additional indicators
+from ta.trend import SMAIndicator
 from prophet import Prophet  # Updated import for Prophet
 
 # --- Secure Credential Management ---
 # Load credentials from config.yaml (excluded from Git)
-with open('config.yaml', 'r') as file:
-    config = yaml.safe_load(file)
+try:
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+except FileNotFoundError:
+    st.error("config.yaml not found. Please create it with your credentials.")
+    st.stop()
 
 authenticator = stauth.Authenticate(
     credentials=config['credentials'],
@@ -77,15 +81,15 @@ with st.sidebar:
     analyses = st.multiselect("Select Analyses", ["Stats", "Moving Averages", "RSI", "MACD"])
     prediction_model = st.selectbox("Prediction Model", ["ARIMA", "Prophet"])
 
-    # Login
-    authentication_status, username = authenticator.login(form_name='Login', location='sidebar')
+    # Login (Fixed)
+    authentication_status, username = authenticator.login(location='main')
 
 # Handle Authentication Status
 if authentication_status:
-    user_name = config['credentials']['usernames'][username]['name']  # Fetch name from config
+    user_name = config['credentials']['usernames'][username]['name']
     st.write(f"Welcome, {user_name}!")
 
-    # Portfolio Management (Improved)
+    # Portfolio Management
     if analysis_type == "Portfolio":
         st.subheader("Portfolio Management")
         with st.form("portfolio_form"):
@@ -93,7 +97,6 @@ if authentication_status:
             weight = st.number_input("Weight (%)", min_value=0.0, max_value=100.0)
             submit = st.form_submit_button("Add to Portfolio")
             if submit:
-                # Save to SQLite (scalable to PostgreSQL if needed)
                 c.execute("INSERT OR REPLACE INTO portfolios (username, portfolio) VALUES (?, ?)", 
                           (username, f"{ticker}:{weight}"))
                 conn.commit()
@@ -108,7 +111,7 @@ if authentication_status:
     # Main Content
     col1, col2 = st.columns(2)
     with col1:
-        # Real-Time Price Updates (Improved)
+        # Real-Time Price Updates
         if analysis_type == "Single Asset" and ticker:
             st.write("### Real-Time Price Updates")
             price_placeholder = st.empty()
@@ -125,7 +128,7 @@ if authentication_status:
                 time.sleep(1)
 
     with col2:
-        # Fetch Historical Data (with Caching and Error Handling)
+        # Fetch Historical Data
         @st.cache_data
         def fetch_data(asset_type, ticker, period, data_source):
             try:
@@ -154,7 +157,7 @@ if authentication_status:
                 data = fetch_data(asset_type, ticker, period, data_source)
             
             if data is not None:
-                # Compute Analyses (Improved with Customization)
+                # Compute Analyses
                 if "Moving Averages" in analyses:
                     short_window = st.slider("Short MA Window", min_value=5, max_value=50, value=20)
                     long_window = st.slider("Long MA Window", min_value=20, max_value=100, value=50)
@@ -207,7 +210,7 @@ if authentication_status:
                 fig.update_layout(title=f"{ticker} Financial Analysis", height=800)
                 st.plotly_chart(fig)
                 
-                # Price Prediction (Improved with Model Selection)
+                # Price Prediction
                 if st.checkbox("Include Price Prediction"):
                     if prediction_model == "ARIMA":
                         model = pm.auto_arima(data["close"], seasonal=False, stepwise=True)
