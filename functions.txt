@@ -10,3 +10,11 @@ Alerts: In-app notifications for indicator thresholds.
 
 Cloud Hosting: Accessible online via Streamlit Cloud.
 
+Real-Time Updates: Live prices via WebSockets.
+
+Smarter Predictions: Accurate forecasts with ARIMA.
+
+User Personalization: Accounts and portfolio storage.
+
+Mobile Optimization: A responsive, mobile-friendly layout.
+
